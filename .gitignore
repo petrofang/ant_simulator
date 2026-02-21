@@ -39,3 +39,8 @@
 
 # debug information files
 *.dwo
+
+# Web / Node artifacts
+node_modules/
+dist/
+.DS_Store
