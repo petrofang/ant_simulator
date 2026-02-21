@@ -15,7 +15,7 @@ class Game {
     this._init();
     this._bindEvents();
 
-    this.ui.setStatus('Lead your colony! Collect food and defeat the red ants. WASD / arrows to move your ant.');
+    this.ui.setStatus('Lead your colony! Collect food and defeat the red ants. A worker will mature shortly – use WASD/arrow keys once it appears.');
     requestAnimationFrame(this._loop.bind(this));
   }
 
@@ -50,6 +50,15 @@ class Game {
   // ---- Input ----
   _bindEvents() {
     document.addEventListener('keydown', e => {
+      // movement keys should not trigger page scrolling/etc
+      const movementKeys = [
+        'ArrowUp','ArrowDown','ArrowLeft','ArrowRight',
+        'KeyW','KeyA','KeyS','KeyD'
+      ];
+      if (movementKeys.includes(e.code)) {
+        e.preventDefault();
+      }
+
       this.keys[e.code] = true;
 
       if (e.code === 'Space') {
@@ -65,7 +74,13 @@ class Game {
       }
     });
 
-    document.addEventListener('keyup', e => { this.keys[e.code] = false; });
+    document.addEventListener('keyup', e => {
+      const movementKeys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD'];
+      if (movementKeys.includes(e.code)) {
+        e.preventDefault();
+      }
+      this.keys[e.code] = false;
+    });
 
     // Click to aim player ant
     this.canvas.addEventListener('click', e => {
@@ -86,14 +101,17 @@ class Game {
     const left  = this.keys['ArrowLeft']  || this.keys['KeyA'];
     const right = this.keys['ArrowRight'] || this.keys['KeyD'];
 
+    // debug: uncomment to log keys each frame
+    // console.log('input', {up,down,left,right,dir: p.dir});
+
     if      (up    && right) p.dir = -Math.PI / 4;
     else if (up    && left)  p.dir = -Math.PI * 3 / 4;
     else if (down  && right) p.dir =  Math.PI / 4;
     else if (down  && left)  p.dir =  Math.PI * 3 / 4;
     else if (up)             p.dir = -Math.PI / 2;
     else if (down)           p.dir =  Math.PI / 2;
-    else if (left)           p.dir =  Math.PI;
-    else if (right)          p.dir =  0;
+    else if (left)           p.dir = Math.PI;
+    else if (right)          p.dir = 0;
   }
 
   // ---- Restart ----
@@ -123,6 +141,18 @@ class Game {
 
     for (let t = 0; t < CONFIG.TICKS_PER_FRAME; t++) {
       this.tick++;
+
+      // make sure we have a player ant; a mature worker may not exist at start
+      if (!this.playerAnt || this.playerAnt.isDead) {
+        const newPlayer = this.blackColony.ants.find(
+          a => a.type === AntType.WORKER && a.isMature,
+        );
+        if (newPlayer) {
+          this.playerAnt = newPlayer;
+          this.playerAnt.isPlayer = true;
+          this.ui.setStatus('A worker has matured – you can now control it.');
+        }
+      }
 
       this._handlePlayerInput();
       this.pheromones.decay();

@@ -34,6 +34,7 @@ class Ant {
     this.carrying      = 0;   // food being carried
     this.devTicks      = 0;   // ticks spent in developmental stage
     this.fightCooldown = 0;
+    this.avoiding      = 0;   // ticks remaining to avoid obstacle
 
     this.isPlayer  = false;
     this.nestX     = x;  // home nest centre (set by Colony)
@@ -78,6 +79,7 @@ class Ant {
     if (this.type === AntType.QUEEN)  { return; }  // queen is stationary
 
     if (this.fightCooldown > 0) this.fightCooldown--;
+    if (this.avoiding > 0) this.avoiding--;
 
     // Always check for nearby enemies first
     const enemy = this._findEnemy(allAnts);
@@ -116,9 +118,12 @@ class Ant {
         this.state    = AntState.CARRYING;
         // U-turn to head home
         this.dir += Math.PI + (Math.random() - 0.5) * 0.4;
+        this.avoiding = 0;
         return;
       }
     }
+
+    if (this.avoiding > 0) return; // keep current direction to avoid obstacle
 
     // Steer toward pheromone trail
     const steer = pheromones.steer(this.colony, this.x, this.y, this.dir);
@@ -200,8 +205,27 @@ class Ant {
 
     // Avoid obstacles (if world is provided)
     if (world && !world.passable(Math.floor(nx), Math.floor(ny))) {
-      this.dir += Math.PI / 2 + (Math.random() - 0.5) * 1.0;
-      return; // stay in place this tick
+      // Try up to 8 different angles before giving up
+      const baseOffset = Math.PI / 2 + (Math.random() - 0.5) * 1.0;
+      let turned = false;
+      for (let attempt = 1; attempt <= 8; attempt++) {
+        const tryDir = this.dir + baseOffset * attempt * (attempt % 2 === 0 ? -1 : 1);
+        const tnx = this.x + Math.cos(tryDir) * spd;
+        const tny = this.y + Math.sin(tryDir) * spd;
+        if (world.passable(Math.floor(tnx), Math.floor(tny))) {
+          this.dir = tryDir;
+          this.avoiding = 3; // hold new direction briefly so forage() doesn't immediately override
+          nx = tnx;
+          ny = tny;
+          turned = true;
+          break;
+        }
+      }
+      if (!turned) {
+        // Completely surrounded — reverse direction and try again next tick
+        this.dir += Math.PI + (Math.random() - 0.5) * 0.5;
+        return;
+      }
     }
 
     this.x = nx;

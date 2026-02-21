@@ -27,7 +27,7 @@ xdg-open index.html      # Linux
 
 | Key | Action |
 |---|---|
-| `W A S D` / `↑ ← ↓ →` | Move your ant |
+| `W A S D` / `↑ ← ↓ →` | Move your ant (you must have a mature worker – wait a few seconds if none are active) |
 | `Click` on canvas | Aim your ant toward that point |
 | `Space` | Toggle pheromone trail overlay |
 | `P` | Pause / Resume |
