@@ -35,6 +35,9 @@ class Ant {
     this.devTicks      = 0;   // ticks spent in developmental stage
     this.fightCooldown = 0;
     this.avoiding      = 0;   // ticks remaining to avoid obstacle
+    this.hitFlash      = 0;   // frames remaining for hit-flash visual
+    this.legPhase      = 0;   // animated leg swing phase (radians)
+    this.kills         = 0;   // enemies killed
 
     this.isPlayer  = false;
     this.nestX     = x;  // home nest centre (set by Colony)
@@ -79,7 +82,8 @@ class Ant {
     if (this.type === AntType.QUEEN)  { return; }  // queen is stationary
 
     if (this.fightCooldown > 0) this.fightCooldown--;
-    if (this.avoiding > 0) this.avoiding--;
+    if (this.avoiding      > 0) this.avoiding--;
+    if (this.hitFlash      > 0) this.hitFlash--;
 
     // Always check for nearby enemies first
     const enemy = this._findEnemy(allAnts);
@@ -183,8 +187,9 @@ class Ant {
       this._move(null); // move toward enemy (no obstacle check for fighting)
     } else if (this.fightCooldown <= 0) {
       enemy.hp -= CONFIG.DAMAGE;
+      enemy.hitFlash = 10;
       this.fightCooldown = CONFIG.FIGHT_COOLDOWN;
-      if (enemy.hp <= 0) enemy.state = AntState.DEAD;
+      if (enemy.hp <= 0) { enemy.state = AntState.DEAD; this.kills++; }
     }
   }
 
@@ -230,5 +235,6 @@ class Ant {
 
     this.x = nx;
     this.y = ny;
+    this.legPhase += spd * 12; // advance leg animation
   }
 }

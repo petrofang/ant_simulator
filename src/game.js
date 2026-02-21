@@ -6,17 +6,33 @@ class Game {
     this.canvas.width  = CONFIG.CANVAS_W;
     this.canvas.height = CONFIG.CANVAS_H;
 
-    this.tick     = 0;
-    this.paused   = false;
-    this.gameOver = false;
+    this.tick        = 0;
+    this.paused      = false;
+    this.gameOver    = false;
+    this.speedLevel  = 0; // index into CONFIG.SPEED_LEVELS
 
     this.ui = new UI();
 
     this._init();
     this._bindEvents();
+    this._fitCanvas();
+    window.addEventListener('resize', () => this._fitCanvas());
 
     this.ui.setStatus('Lead your colony! Collect food and defeat the red ants. A worker will mature shortly – use WASD/arrow keys once it appears.');
     requestAnimationFrame(this._loop.bind(this));
+  }
+
+  // ---- Canvas CSS scaling to fill the wrapper ----
+  _fitCanvas() {
+    const wrapper = this.canvas.parentElement;
+    const { width: ww, height: wh } = wrapper.getBoundingClientRect();
+    const scaleX = ww / CONFIG.CANVAS_W;
+    const scaleY = wh / CONFIG.CANVAS_H;
+    this._cssScale = Math.min(scaleX, scaleY);
+    this.canvas.style.transform = `scale(${this._cssScale})`;
+    this.canvas.style.transformOrigin = 'center center';
+    // Use crisp-edges only when zoomed-in (scale > 1)
+    this.canvas.style.imageRendering = this._cssScale > 1 ? 'pixelated' : 'auto';
   }
 
   // ---- Initialise / restart ----
@@ -72,6 +88,14 @@ class Game {
       if (e.code === 'KeyR') {
         this._restart();
       }
+      // Speed control — number keys 1-4
+      if (e.code === 'Digit1') this._setSpeed(0);
+      if (e.code === 'Digit2') this._setSpeed(1);
+      if (e.code === 'Digit3') this._setSpeed(2);
+      if (e.code === 'Digit4') this._setSpeed(3);
+      // Speed up/down with + / -
+      if (e.code === 'Equal' || e.code === 'NumpadAdd')      this._setSpeed(Math.min(3, this.speedLevel + 1));
+      if (e.code === 'Minus' || e.code === 'NumpadSubtract') this._setSpeed(Math.max(0, this.speedLevel - 1));
     });
 
     document.addEventListener('keyup', e => {
@@ -82,18 +106,63 @@ class Game {
       this.keys[e.code] = false;
     });
 
-    // Click to aim player ant
+    // Click: aim player ant OR select a friendly worker to control
     this.canvas.addEventListener('click', e => {
-      if (!this.playerAnt || this.playerAnt.isDead) return;
-      const rect = this.canvas.getBoundingClientRect();
-      const wx   = (e.clientX - rect.left)  / CONFIG.CELL;
-      const wy   = (e.clientY - rect.top)   / CONFIG.CELL;
-      this.playerAnt.dir = Math.atan2(wy - this.playerAnt.y, wx - this.playerAnt.x);
+      if (this.gameOver) return;
+      const rect  = this.canvas.getBoundingClientRect();
+      const scale = this._cssScale || 1;
+      // Account for CSS scaling: the rendered canvas may be displayed larger/smaller
+      const wx = (e.clientX - rect.left) * (CONFIG.CANVAS_W / rect.width)  / CONFIG.CELL;
+      const wy = (e.clientY - rect.top)  * (CONFIG.CANVAS_H / rect.height) / CONFIG.CELL;
+
+      // Check if clicked near a friendly ant — if so, take control of it
+      const picked = this._pickFriendlyAnt(wx, wy);
+      if (picked && picked !== this.playerAnt) {
+        if (this.playerAnt) this.playerAnt.isPlayer = false;
+        this.playerAnt          = picked;
+        picked.isPlayer         = true;
+        this.ui.setStatus('Switched to a new ant!');
+        return;
+      }
+
+      // Otherwise just aim the current player ant
+      if (this.playerAnt && !this.playerAnt.isDead) {
+        this.playerAnt.dir = Math.atan2(wy - this.playerAnt.y, wx - this.playerAnt.x);
+      }
     });
   }
 
+  _pickFriendlyAnt(wx, wy) {
+    const pickR2 = CONFIG.ANT_PICK_RADIUS * CONFIG.ANT_PICK_RADIUS;
+    let best = null, bestD = Infinity;
+    for (const ant of this.blackColony.ants) {
+      if (!ant.isMature || ant.isDead || ant.type === AntType.QUEEN) continue;
+      const dx = ant.x - wx, dy = ant.y - wy;
+      const d  = dx * dx + dy * dy;
+      if (d < pickR2 && d < bestD) { bestD = d; best = ant; }
+    }
+    return best;
+  }
+
+  _setSpeed(level) {
+    this.speedLevel = level;
+    const mult = CONFIG.SPEED_LEVELS[level];
+    this.ui.setSpeed(mult);
+  }
+
   _handlePlayerInput() {
-    if (!this.playerAnt || this.playerAnt.isDead) return;
+    if (!this.playerAnt || this.playerAnt.isDead) {
+      // Auto-respawn: pick a new worker to control
+      const next = this.blackColony.ants.find(
+        a => a.type === AntType.WORKER && a.isMature && !a.isDead && !a.isPlayer,
+      );
+      if (next) {
+        next.isPlayer  = true;
+        this.playerAnt = next;
+        this.ui.setStatus('Your ant died — you are now controlling a new worker.');
+      }
+      return;
+    }
     const p = this.playerAnt;
 
     const up    = this.keys['ArrowUp']    || this.keys['KeyW'];
@@ -101,26 +170,34 @@ class Game {
     const left  = this.keys['ArrowLeft']  || this.keys['KeyA'];
     const right = this.keys['ArrowRight'] || this.keys['KeyD'];
 
-    // debug: uncomment to log keys each frame
-    // console.log('input', {up,down,left,right,dir: p.dir});
+    let targetDir = null;
+    if      (up    && right) targetDir = -Math.PI / 4;
+    else if (up    && left)  targetDir = -Math.PI * 3 / 4;
+    else if (down  && right) targetDir =  Math.PI / 4;
+    else if (down  && left)  targetDir =  Math.PI * 3 / 4;
+    else if (up)             targetDir = -Math.PI / 2;
+    else if (down)           targetDir =  Math.PI / 2;
+    else if (left)           targetDir =  Math.PI;
+    else if (right)          targetDir =  0;
 
-    if      (up    && right) p.dir = -Math.PI / 4;
-    else if (up    && left)  p.dir = -Math.PI * 3 / 4;
-    else if (down  && right) p.dir =  Math.PI / 4;
-    else if (down  && left)  p.dir =  Math.PI * 3 / 4;
-    else if (up)             p.dir = -Math.PI / 2;
-    else if (down)           p.dir =  Math.PI / 2;
-    else if (left)           p.dir = Math.PI;
-    else if (right)          p.dir = 0;
+    if (targetDir !== null) {
+      // Smooth turning — gradually approach target direction
+      let diff = targetDir - p.dir;
+      while (diff >  Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      p.dir += diff * CONFIG.SMOOTH_TURN_RATE;
+    }
   }
 
   // ---- Restart ----
   _restart() {
-    this.gameOver = false;
-    this.paused   = false;
-    this.tick     = 0;
+    this.gameOver   = false;
+    this.paused     = false;
+    this.tick       = 0;
+    this.speedLevel = 0;
     this.ui.hideMessage();
     this._init();
+    this.ui.setSpeed(1);
     this.ui.setStatus('New game started. Lead your colony!');
   }
 
@@ -135,24 +212,18 @@ class Game {
     }
   }
 
+  // ---- Kill tally ----
+  _totalKills() {
+    return this.blackColony.ants.reduce((sum, a) => sum + (a.kills || 0), 0);
+  }
+
   // ---- Main simulation step ----
   _update() {
     if (this.paused || this.gameOver) return;
 
-    for (let t = 0; t < CONFIG.TICKS_PER_FRAME; t++) {
+    const ticks = CONFIG.TICKS_PER_FRAME * CONFIG.SPEED_LEVELS[this.speedLevel];
+    for (let t = 0; t < ticks; t++) {
       this.tick++;
-
-      // make sure we have a player ant; a mature worker may not exist at start
-      if (!this.playerAnt || this.playerAnt.isDead) {
-        const newPlayer = this.blackColony.ants.find(
-          a => a.type === AntType.WORKER && a.isMature,
-        );
-        if (newPlayer) {
-          this.playerAnt = newPlayer;
-          this.playerAnt.isPlayer = true;
-          this.ui.setStatus('A worker has matured – you can now control it.');
-        }
-      }
 
       this._handlePlayerInput();
       this.pheromones.decay();
@@ -169,7 +240,7 @@ class Game {
   _loop() {
     this._update();
     this.renderer.render([this.blackColony, this.redColony], this.playerAnt);
-    this.ui.update(this.blackColony, this.redColony, this.tick);
+    this.ui.update(this.blackColony, this.redColony, this.tick, this.playerAnt, this._totalKills());
     requestAnimationFrame(this._loop.bind(this));
   }
 }
