@@ -3,17 +3,22 @@
 // All game constants in one place
 const COLS = 100;
 const ROWS = 75;
-const CELL = 8; // pixels per cell
+const CELL = 10; // pixels per cell
 
 const CONFIG = Object.freeze({
   COLS,
   ROWS,
   CELL,
-  CANVAS_W: COLS * CELL,  // 800
-  CANVAS_H: ROWS * CELL,  // 600
+  CANVAS_W: COLS * CELL,  // 1000
+  CANVAS_H: ROWS * CELL,  // 750
 
   // Simulation speed
   TICKS_PER_FRAME: 3,
+  SPEED_LEVELS: [1, 2, 4, 8], // multipliers for TICKS_PER_FRAME
+
+  // Player controls
+  SMOOTH_TURN_RATE: 0.28,     // fraction per tick how fast player ant turns toward target
+  ANT_PICK_RADIUS:  2.5,      // cells — click radius for selecting a friendly ant
 
   // Pheromones
   PHERO_DEPOSIT: 90,

@@ -15,10 +15,15 @@ class UI {
       status:        document.getElementById('status-text'),
       tick:          document.getElementById('tick-count'),
       message:       document.getElementById('message'),
+      speedVal:      document.getElementById('speed-value'),
+      playerHpBar:   document.getElementById('player-hp-bar'),
+      playerHpText:  document.getElementById('player-hp-text'),
+      playerState:   document.getElementById('player-state'),
+      killCount:     document.getElementById('kill-count'),
     };
   }
 
-  update(blackColony, redColony, tick) {
+  update(blackColony, redColony, tick, playerAnt, kills) {
     const e = this._el;
 
     if (blackColony) {
@@ -35,6 +40,25 @@ class UI {
       e.redQueen.textContent      = redColony.alive ? '♛' : '✗';
     }
     e.tick.textContent = `Tick: ${tick}`;
+
+    if (kills !== undefined && e.killCount)  e.killCount.textContent  = kills;
+
+    // Player ant status
+    if (playerAnt && !playerAnt.isDead) {
+      const pct = playerAnt.hp / playerAnt.maxHp * 100;
+      if (e.playerHpBar)  e.playerHpBar.style.width  = `${pct}%`;
+      if (e.playerHpText) e.playerHpText.textContent  = `${playerAnt.hp}/${playerAnt.maxHp}`;
+      if (e.playerState) {
+        const stateNames = ['Foraging','Following trail','Carrying food','Fighting!','Guarding'];
+        e.playerState.textContent = stateNames[playerAnt.state] ?? '';
+      }
+    } else if (e.playerState) {
+      e.playerState.textContent = 'Reassigning…';
+    }
+  }
+
+  setSpeed(mult) {
+    if (this._el.speedVal) this._el.speedVal.textContent = `${mult}×`;
   }
 
   showMessage(text, color = '#ffffff') {

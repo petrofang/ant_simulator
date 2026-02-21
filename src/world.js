@@ -14,8 +14,10 @@ class World {
     const n = this.cols * this.rows;
     this.tiles    = new Uint8Array(n);
     this.food     = new Float32Array(n);
-    // Per-cell shade for subtle grass variation
+    // Per-cell shade for subtle tile variation (0-19)
     this.shade    = new Uint8Array(n);
+    // Per-pixel noise for sub-cell texture (0-19)
+    this.pixelNoise = new Uint8Array(CONFIG.CANVAS_W * CONFIG.CANVAS_H);
   }
 
   idx(x, y) { return y * this.cols + x; }
@@ -38,6 +40,11 @@ class World {
     // Subtle grass variation
     for (let i = 0; i < this.shade.length; i++) {
       this.shade[i] = Math.floor(Math.random() * 20);
+    }
+
+    // Per-pixel noise for organic terrain texture
+    for (let i = 0; i < this.pixelNoise.length; i++) {
+      this.pixelNoise[i] = Math.floor(Math.random() * 20);
     }
 
     // Scatter obstacles (rocks / pebbles) — ~4% of cells

@@ -11,6 +11,8 @@
     <header>
       <h1>🐜 Ant Simulator</h1>
       <span id="header-note">A modern SimAnt clone</span>
+      <span class="header-spacer"></span>
+      <span class="speed-indicator">Speed: <strong id="speed-value">1×</strong></span>
     </header>
 
     <main>
@@ -24,6 +26,30 @@
 
       <!-- ── Sidebar HUD ── -->
       <aside id="sidebar">
+
+        <!-- Minimap -->
+        <div class="panel" id="panel-minimap">
+          <h2>🗺 Overview</h2>
+          <canvas id="minimap-canvas" width="192" height="144"></canvas>
+        </div>
+
+        <!-- Player ant status -->
+        <div class="panel" id="panel-player">
+          <h2>🟡 Your Ant</h2>
+          <div class="stat-grid">
+            <span>Status</span><span id="player-state">—</span>
+          </div>
+          <div class="hp-row">
+            <span class="hp-label">HP</span>
+            <div class="hp-track">
+              <div id="player-hp-bar" class="hp-fill"></div>
+            </div>
+            <span id="player-hp-text" class="hp-text">—</span>
+          </div>
+          <div class="stat-grid" style="margin-top:4px">
+            <span>Kills</span><span id="kill-count">0</span>
+          </div>
+        </div>
 
         <div class="panel" id="panel-black">
           <h2>⬛ Your Colony</h2>
@@ -49,9 +75,11 @@
         <div class="panel" id="panel-controls">
           <h2>Controls</h2>
           <ul class="control-list">
-            <li><kbd>W A S D</kbd> or <kbd>↑ ← ↓ →</kbd> Move your ant</li>
-            <li><kbd>Click</kbd> Aim your ant</li>
-            <li><kbd>Space</kbd> Toggle pheromone overlay</li>
+            <li><kbd>W A S D</kbd> or <kbd>↑ ← ↓ →</kbd> Move</li>
+            <li><kbd>Click ant</kbd> Take control of that ant</li>
+            <li><kbd>Click ground</kbd> Aim your ant</li>
+            <li><kbd>1 2 3 4</kbd> or <kbd>+ −</kbd> Speed</li>
+            <li><kbd>Space</kbd> Toggle pheromone glow</li>
             <li><kbd>P</kbd> Pause / Resume</li>
             <li><kbd>R</kbd> Restart</li>
           </ul>
