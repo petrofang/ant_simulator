@@ -59,7 +59,16 @@
             <span>Soldiers</span>   <span id="black-soldiers">0</span>
             <span>Developing</span> <span id="black-developing">0</span>
             <span>Food stored</span><span id="black-food">0</span>
+            <span>Food income</span><span id="black-food-rate">0</span>
           </div>
+          <!-- Caste ratio bar: workers | soldiers | developing -->
+          <div class="caste-bar-wrap" title="Blue=workers  Orange=soldiers  Grey=developing">
+            <div id="caste-workers"  class="caste-seg caste-workers"></div>
+            <div id="caste-soldiers" class="caste-seg caste-soldiers"></div>
+            <div id="caste-dev"      class="caste-seg caste-dev"></div>
+          </div>
+          <!-- Population sparkline -->
+          <canvas id="pop-sparkline" width="196" height="26"></canvas>
         </div>
 
         <div class="panel" id="panel-red">
@@ -79,7 +88,7 @@
             <li><kbd>Click ant</kbd> Take control of that ant</li>
             <li><kbd>Click ground</kbd> Aim your ant</li>
             <li><kbd>1 2 3 4</kbd> or <kbd>+ −</kbd> Speed</li>
-            <li><kbd>Space</kbd> Toggle pheromone glow</li>
+            <li><kbd>Space</kbd> Toggle pheromone overlay <span class="dim">(blue=food, orange=alarm)</span></li>
             <li><kbd>P</kbd> Pause / Resume</li>
             <li><kbd>R</kbd> Restart</li>
           </ul>

@@ -50,7 +50,7 @@ class Renderer {
 
   // ---- World tile image ----
   _buildWorldImage() {
-    const { tiles, food, shade, pixelNoise, cols, rows } = this.world;
+    const { tiles, food, shade, pixelNoise, cols, rows, explored } = this.world;
     const C    = CONFIG.CELL;
     const W    = CONFIG.CANVAS_W;
     const data = this._worldImg.data;
@@ -98,6 +98,11 @@ class Renderer {
           }
         }
 
+        // Fog of war — near-black for unexplored cells
+        if (!explored[i]) {
+          r = 3; g = 4; b = 6;
+        }
+
         // Fill CELL×CELL pixel block with per-pixel sub-noise for organic texture
         for (let py = ty * C; py < (ty + 1) * C; py++) {
           for (let px = tx * C; px < (tx + 1) * C; px++) {
@@ -122,36 +127,55 @@ class Renderer {
     const cols  = CONFIG.COLS, rows = CONFIG.ROWS;
     const C     = CONFIG.CELL;
     const W     = CONFIG.CANVAS_W;
-    const bGrid = this.pheromones.grids[PHERO.BLACK];
-    const rGrid = this.pheromones.grids[PHERO.RED];
-    const data  = this._pheroImg.data;
+    const bGrid  = this.pheromones.grids[PHERO.BLACK];
+    const rGrid  = this.pheromones.grids[PHERO.RED];
+    const abGrid = this.pheromones.grids[PHERO.ALARM_BLACK];
+    const arGrid = this.pheromones.grids[PHERO.ALARM_RED];
+    const expl   = this.world.explored;
+    const data   = this._pheroImg.data;
 
     data.fill(0);
 
     for (let ty = 0; ty < rows; ty++) {
       for (let tx = 0; tx < cols; tx++) {
-        const i  = ty * cols + tx;
-        const bv = bGrid[i];
-        const rv = rGrid[i];
-        if (bv < 1 && rv < 1) continue;
+        const i = ty * cols + tx;
+        if (!expl[i]) continue;  // don't reveal pheromones through fog
 
-        const ba = Math.floor(Math.min(220, bv / CONFIG.PHERO_MAX * 230));
-        const ra = Math.floor(Math.min(220, rv / CONFIG.PHERO_MAX * 230));
+        const bv  = bGrid[i];
+        const rv  = rGrid[i];
+        const abv = abGrid[i];
+        const arv = arGrid[i];
+        if (bv < 1 && rv < 1 && abv < 1 && arv < 1) continue;
+
+        // Alarm takes priority if stronger than half the food signal
+        const maxAlarm = Math.max(abv, arv);
+        const maxFood  = Math.max(bv, rv);
+        let pr, pg, pb, pa;
+        if (maxAlarm > 0 && maxAlarm >= maxFood * 0.3) {
+          if (abv >= arv) {
+            pa = Math.floor(Math.min(220, abv / CONFIG.ALARM_MAX * 230));
+            pr = 255; pg = 140; pb = 0;   // black-colony alarm — orange
+          } else {
+            pa = Math.floor(Math.min(220, arv / CONFIG.ALARM_MAX * 230));
+            pr = 255; pg = 220; pb = 0;   // red-colony alarm — yellow
+          }
+        } else {
+          if (bv >= rv) {
+            pa = Math.floor(Math.min(220, bv / CONFIG.PHERO_MAX * 230));
+            pr = 60; pg = 140; pb = 255;
+          } else {
+            pa = Math.floor(Math.min(220, rv / CONFIG.PHERO_MAX * 230));
+            pr = 255; pg = 60; pb = 60;
+          }
+        }
 
         for (let py = ty * C; py < (ty + 1) * C; py++) {
           for (let px = tx * C; px < (tx + 1) * C; px++) {
             const pi = (py * W + px) * 4;
-            if (bv >= rv) {
-              data[pi]     = 60;
-              data[pi + 1] = 140;
-              data[pi + 2] = 255;
-              data[pi + 3] = ba;
-            } else {
-              data[pi]     = 255;
-              data[pi + 1] = 60;
-              data[pi + 2] = 60;
-              data[pi + 3] = ra;
-            }
+            data[pi]     = pr;
+            data[pi + 1] = pg;
+            data[pi + 2] = pb;
+            data[pi + 3] = pa;
           }
         }
       }
@@ -167,6 +191,13 @@ class Renderer {
     for (const colony of colonies) {
       for (const ant of colony.ants) {
         if (ant.isDead) continue;
+
+        // Hide enemy ants that are in unexplored (fog-covered) territory
+        if (ant.colony !== 0) {
+          const xi = Math.floor(ant.x), yi = Math.floor(ant.y);
+          if (!this.world.explored[yi * CONFIG.COLS + xi]) continue;
+        }
+
         const sx = ant.x * C;
         const sy = ant.y * C;
 
@@ -434,6 +465,17 @@ class Renderer {
       mc.beginPath();
       mc.arc(px, py, 2.5, 0, Math.PI * 2);
       mc.fill();
+    }
+
+    // Fog of war overlay on minimap
+    const { explored, cols: wcols, rows: wrows } = this.world;
+    mc.fillStyle = 'rgba(0,0,0,0.82)';
+    for (let ty = 0; ty < wrows; ty++) {
+      for (let tx = 0; tx < wcols; tx++) {
+        if (!explored[ty * wcols + tx]) {
+          mc.fillRect(tx * scX, ty * scY, scX + 0.5, scY + 0.5);
+        }
+      }
     }
 
     // Border

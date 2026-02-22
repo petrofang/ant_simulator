@@ -18,6 +18,8 @@ class World {
     this.shade    = new Uint8Array(n);
     // Per-pixel noise for sub-cell texture (0-19)
     this.pixelNoise = new Uint8Array(CONFIG.CANVAS_W * CONFIG.CANVAS_H);
+    // Fog of war — 1 = explored by black colony, 0 = hidden
+    this.explored = new Uint8Array(n);
   }
 
   idx(x, y) { return y * this.cols + x; }
@@ -86,6 +88,23 @@ class World {
         const i = this.idx(gx, gy);
         this.tiles[i] = Tile.NEST;
         this.food[i]  = 0;
+      }
+    }
+  }
+
+  /** Mark all cells within `radius` of (cx, cy) as explored. */
+  explore(cx, cy, radius) {
+    const r2 = radius * radius;
+    const x0 = Math.max(0, Math.floor(cx - radius));
+    const x1 = Math.min(this.cols - 1, Math.ceil(cx + radius));
+    const y0 = Math.max(0, Math.floor(cy - radius));
+    const y1 = Math.min(this.rows - 1, Math.ceil(cy + radius));
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const dx = x - cx, dy = y - cy;
+        if (dx * dx + dy * dy <= r2) {
+          this.explored[y * this.cols + x] = 1;
+        }
       }
     }
   }

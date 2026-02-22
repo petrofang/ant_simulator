@@ -12,6 +12,11 @@ class Colony {
     this.layTimer   = 0;
     this.alive      = true;
     this.queen      = null;
+    // Economy dashboard
+    this.popHistory   = [];   // sampled total population over time
+    this._sampleTimer = 0;
+    this._foodIn      = 0;   // food collected since last sample
+    this._lastFoodIn  = 0;   // food collected in previous interval
   }
 
   init() {
@@ -45,6 +50,7 @@ class Colony {
   get soldiers()   { return this.ants.filter(a => a.type === AntType.SOLDIER && a.isMature && !a.isDead).length; }
   get developing() { return this.ants.filter(a => !a.isMature && !a.isDead).length; }
   get totalPop()   { return this.ants.filter(a => !a.isDead).length; }
+  get foodRate()   { return this._lastFoodIn; } // food collected in last HISTORY_INTERVAL ticks
 
   update(allAnts) {
     if (!this.alive) return;
@@ -61,8 +67,9 @@ class Colony {
     // Collect food carried by ants arriving at the nest
     for (const ant of this.ants) {
       if (ant.carrying > 0 && this.world.isNest(ant.x, ant.y)) {
-        this.food   += ant.carrying;
-        ant.carrying = 0;
+        this.food    += ant.carrying;
+        this._foodIn += ant.carrying;   // track for food-rate dashboard
+        ant.carrying  = 0;
       }
     }
 
@@ -79,6 +86,16 @@ class Colony {
       this.ants.push(egg);
       this.food   -= CONFIG.LAY_COST;
       this.layTimer = 0;
+    }
+
+    // Economy sampling
+    this._sampleTimer++;
+    if (this._sampleTimer >= CONFIG.HISTORY_INTERVAL) {
+      this._sampleTimer = 0;
+      this.popHistory.push(this.totalPop);
+      if (this.popHistory.length > CONFIG.HISTORY_LENGTH) this.popHistory.shift();
+      this._lastFoodIn = this._foodIn;
+      this._foodIn     = 0;
     }
 
     // Update individual ants

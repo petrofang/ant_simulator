@@ -246,3 +246,33 @@ kbd {
 }
 
 .dim { color: #505070; }
+
+/* ── Caste ratio bar ─────────────────────────────────── */
+.caste-bar-wrap {
+  display: flex;
+  height: 5px;
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 7px 0 3px;
+  background: rgba(0,0,0,0.3);
+}
+
+.caste-seg {
+  height: 100%;
+  transition: width 0.5s ease;
+}
+
+.caste-workers  { background: #44aaff; }
+.caste-soldiers { background: #ff8844; }
+.caste-dev      { background: #888; }
+
+/* ── Population sparkline ────────────────────────────── */
+#pop-sparkline {
+  display: block;
+  width: 100%;
+  background: rgba(0,0,0,0.18);
+  border-radius: 2px;
+  border: 1px solid rgba(255,255,255,0.05);
+  margin-top: 2px;
+}
+

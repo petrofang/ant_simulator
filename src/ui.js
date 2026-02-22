@@ -20,6 +20,12 @@ class UI {
       playerHpText:  document.getElementById('player-hp-text'),
       playerState:   document.getElementById('player-state'),
       killCount:     document.getElementById('kill-count'),
+      // Economy dashboard
+      blackFoodRate: document.getElementById('black-food-rate'),
+      casteWorkers:  document.getElementById('caste-workers'),
+      casteSoldiers: document.getElementById('caste-soldiers'),
+      casteDev:      document.getElementById('caste-dev'),
+      popSparkline:  document.getElementById('pop-sparkline'),
     };
   }
 
@@ -49,11 +55,29 @@ class UI {
       if (e.playerHpBar)  e.playerHpBar.style.width  = `${pct}%`;
       if (e.playerHpText) e.playerHpText.textContent  = `${playerAnt.hp}/${playerAnt.maxHp}`;
       if (e.playerState) {
-        const stateNames = ['Foraging','Following trail','Carrying food','Fighting!','Guarding'];
+        const stateNames = ['Foraging','Following trail','Carrying food','Fighting!','Guarding','Alarmed!'];
         e.playerState.textContent = stateNames[playerAnt.state] ?? '';
       }
     } else if (e.playerState) {
       e.playerState.textContent = 'Reassigning…';
+    }
+
+    // Economy dashboard (black colony only)
+    if (blackColony) {
+      const w  = blackColony.workers;
+      const s  = blackColony.soldiers;
+      const d  = blackColony.developing;
+      const total = w + s + d || 1;
+      if (e.casteWorkers)  e.casteWorkers.style.width  = `${(w / total * 100).toFixed(1)}%`;
+      if (e.casteSoldiers) e.casteSoldiers.style.width = `${(s / total * 100).toFixed(1)}%`;
+      if (e.casteDev)      e.casteDev.style.width      = `${(d / total * 100).toFixed(1)}%`;
+      if (e.blackFoodRate) {
+        const r = blackColony.foodRate;
+        e.blackFoodRate.textContent = r > 0 ? `+${r.toFixed(0)}` : '0';
+      }
+      if (e.popSparkline && blackColony.popHistory.length > 1) {
+        this._drawSparkline(e.popSparkline, blackColony.popHistory);
+      }
     }
   }
 
@@ -74,5 +98,38 @@ class UI {
 
   setStatus(text) {
     this._el.status.textContent = text;
+  }
+
+  _drawSparkline(canvas, data) {
+    const ctx  = canvas.getContext('2d');
+    const w    = canvas.width;
+    const h    = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    const max  = Math.max(...data, 1);
+    const step = w / (data.length - 1);
+
+    // Gradient fill under the line
+    ctx.beginPath();
+    data.forEach((v, i) => {
+      const x = i * step;
+      const y = h - (v / max) * (h - 3) - 1;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.lineTo((data.length - 1) * step, h);
+    ctx.lineTo(0, h);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(68,170,255,0.13)';
+    ctx.fill();
+
+    // Line
+    ctx.beginPath();
+    data.forEach((v, i) => {
+      const x = i * step;
+      const y = h - (v / max) * (h - 3) - 1;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = '#44aaff';
+    ctx.lineWidth   = 1.2;
+    ctx.stroke();
   }
 }

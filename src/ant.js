@@ -6,11 +6,12 @@ const AntState = Object.freeze({
   CARRYING:  2,   // carrying food, heading home
   FIGHTING:  3,
   GUARDING:  4,   // soldier patrolling near nest
+  ALARMED:   5,   // rushing toward alarm pheromone source
   // Developmental stages (immature)
-  EGG:       5,
-  LARVA:     6,
-  PUPA:      7,
-  DEAD:      8,
+  EGG:       6,
+  LARVA:     7,
+  PUPA:      8,
+  DEAD:      9,
 });
 
 const AntType = Object.freeze({
@@ -85,16 +86,25 @@ class Ant {
     if (this.avoiding      > 0) this.avoiding--;
     if (this.hitFlash      > 0) this.hitFlash--;
 
-    // Always check for nearby enemies first
+    // Enemy detection takes highest priority
     const enemy = this._findEnemy(allAnts);
     if (enemy) {
+      // Broadcast alarm so nearby nestmates rally
+      pheromones.depositAlarm(this.colony, this.x, this.y, CONFIG.ALARM_DEPOSIT);
       this._attackEnemy(enemy);
       return;
     }
 
-    // Return to non-fighting state after losing target
+    // Lose FIGHTING state when target is gone
     if (this.state === AntState.FIGHTING) {
       this.state = (this.carrying > 0) ? AntState.CARRYING : AntState.WANDERING;
+    }
+
+    // Respond to alarm pheromone if not already engaged
+    if (this.state !== AntState.ALARMED) {
+      if (pheromones.senseAlarm(this.colony, this.x, this.y) > 0) {
+        this.state = AntState.ALARMED;
+      }
     }
 
     switch (this.state) {
@@ -107,6 +117,9 @@ class Ant {
         break;
       case AntState.GUARDING:
         this._guard();
+        break;
+      case AntState.ALARMED:
+        this._respondToAlarm(pheromones);
         break;
     }
 
@@ -158,6 +171,17 @@ class Ant {
     const dy   = this.nestY - this.y;
     const home = Math.atan2(dy, dx);
     this.dir   = home + (Math.random() - 0.5) * 0.35;
+  }
+
+  _respondToAlarm(pheromones) {
+    const steer = pheromones.steerAlarm(this.colony, this.x, this.y, this.dir);
+    if (steer !== null) {
+      // Rush toward alarm source — more aggressive than food-trail following
+      this.dir += steer * CONFIG.TURN_MAX * 1.8;
+    } else {
+      // Signal has faded — return to normal duty
+      this.state = (this.carrying > 0) ? AntState.CARRYING : AntState.WANDERING;
+    }
   }
 
   _guard() {

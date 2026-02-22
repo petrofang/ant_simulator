@@ -58,4 +58,17 @@ const CONFIG = Object.freeze({
   FOOD_RADIUS: 3,
   FOOD_PER_CELL: 10,
   NEST_R: 3,
+
+  // Alarm pheromone (faster decay; channels 2 & 3 in PheromoneGrid)
+  ALARM_DEPOSIT:    200,
+  ALARM_DECAY:      0.982,      // much faster than food trail (0.9988)
+  ALARM_MAX:        255,
+  ALARM_SENSE_DIST: 7,          // cells ahead when sniffing alarm signal
+
+  // Fog of war — cells revealed around each black-colony ant per frame
+  EXPLORE_RADIUS: 4,
+
+  // Colony economy dashboard
+  HISTORY_INTERVAL: 60,         // ticks between population / food-rate samples
+  HISTORY_LENGTH:   80,         // number of samples kept for sparkline
 });

@@ -61,6 +61,9 @@ class Game {
     this.renderer = new Renderer(this.canvas, this.world, this.pheromones);
 
     this.keys = {};
+
+    // Reveal the starting nest area so the player isn't blind at game start
+    this.world.explore(blackNest.x, blackNest.y, CONFIG.NEST_R + 4);
   }
 
   // ---- Input ----
@@ -236,9 +239,19 @@ class Game {
     }
   }
 
+  // ---- Fog of war ----
+  // Called once per animation frame (not per tick) for performance.
+  _updateFog() {
+    for (const ant of this.blackColony.ants) {
+      if (ant.isDead) continue;
+      this.world.explore(ant.x, ant.y, CONFIG.EXPLORE_RADIUS);
+    }
+  }
+
   // ---- Game loop ----
   _loop() {
     this._update();
+    this._updateFog();
     this.renderer.render([this.blackColony, this.redColony], this.playerAnt);
     this.ui.update(this.blackColony, this.redColony, this.tick, this.playerAnt, this._totalKills());
     requestAnimationFrame(this._loop.bind(this));
